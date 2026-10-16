@@ -1,0 +1,18 @@
+# Build artifacts
+.build/
+*.exe
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup files
+*.bak
+
+# Tests output (if any)
+Tests/iBreakTests/test_*.log
+
+# Xcode project files (not needed for SPM projects)
+*.xcodeproj/
+*.xcworkspace/
