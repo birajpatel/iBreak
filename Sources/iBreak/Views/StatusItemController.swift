@@ -8,13 +8,16 @@ import Cocoa
     
     // MARK: - Properties
     
-    private weak var appDelegate: AppDelegate?
+    private weak var delegate: (any BreakDelegate & AnyObject)?
+    /// Holds reference to app's time state for display updates.
+    private weak var timeSource: TimeProvider?
     private let statusItem: NSStatusItem
     
     // MARK: - Initialization
     
-    init(delegate: AppDelegate) {
-        self.appDelegate = delegate
+    init(delegate: BreakDelegate, timeSource: TimeProvider) {
+        self.delegate = delegate
+        self.timeSource = timeSource
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
         configureStatusItem()
@@ -25,10 +28,10 @@ import Cocoa
     /// Update the status bar title with remaining time (MM:SS format).
     func updateTitle() {
         guard let button = statusItem.button else { return }
-        if appDelegate?.isBreakActive == true {
+        if timeSource?.isBreakActive == true {
             button.title = "⏸️"
         } else {
-            button.title = formatTime(appDelegate?.timeToNextBreak ?? 0)
+            button.title = formatTime(timeSource?.timeToNextBreak ?? 0)
         }
     }
     
@@ -101,18 +104,23 @@ import Cocoa
     // MARK: - Actions
     
     @objc private func statusBarButtonClicked() {
-        guard let delegate = appDelegate else { return }
-        
         // Handle right-click/control-click via menu automatically
         if NSApp.currentEvent?.type == .rightMouseUp || NSEvent.modifierFlags.contains(.control) {
             return
         }
         
         // Left-click: trigger immediate break
+        guard let delegate = delegate else { return }
         delegate.takeImmediateBreak()
     }
     
-    @objc private func takeBreakNow() { appDelegate?.takeImmediateBreak() }
-    @objc private func skipBreak() { appDelegate?.skipBreak() }
+    @objc private func takeBreakNow() {
+        guard let delegate = delegate else { return }
+        delegate.takeImmediateBreak()
+    }
+    @objc private func skipBreak() {
+        guard let delegate = delegate else { return }
+        delegate.skipBreak()
+    }
     @objc private func quitApp() { NSApp.terminate(nil) }
 }

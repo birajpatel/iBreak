@@ -6,18 +6,24 @@ import Cocoa
 /// Window controller managing the on-top break reminder panel.
 final class BreakWindowController: NSWindowController {
     
-    // MARK: - Properties
+    // MARK: - Properties (Injected Dependencies)
     
-    private weak var delegate: AppDelegate?
-    let viewModel = BreakViewModel()  // Public for potential external access/testing
+    private weak var delegate: BreakDelegate?
+    private let soundPlayer: SoundPlayer
+    let viewModel = BreakViewModel()  // Public for testing access
     
     // MARK: - Initialization
     
-    init(delegate: AppDelegate) {
+    /// Initialize with injected dependencies for testability.
+    /// - Parameters:
+    ///   - delegate: Object conforming to BreakDelegate protocol (typically AppDelegate).
+    ///   - soundPlayer: Sound playback service (defaults to SystemSoundPlayer.shared).
+    init(delegate: BreakDelegate, soundPlayer: SoundPlayer = SystemSoundPlayer.shared) {
         self.delegate = delegate
+        self.soundPlayer = soundPlayer
         super.init(window: nil)
         setupWindow()
-        BreakSoundManager.shared.playBreakStart()  // Entry sound cue
+        soundPlayer.playBreakStart()  // Entry sound cue via protocol
     }
     
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -92,7 +98,7 @@ final class BreakWindowController: NSWindowController {
     func closeWindow() {
         viewModel.stopCountdown()
         viewModel.isShowing = false
-        BreakSoundManager.shared.playBreakEnd()  // Exit sound cue
+        soundPlayer.playBreakEnd()  // Exit sound cue via protocol
         window?.close()
     }
     

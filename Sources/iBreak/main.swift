@@ -5,7 +5,8 @@ import Cocoa
 import Foundation
 
 /// Main application delegate that manages the status bar item and break timer.
-@MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
+/// Conforms to BreakDelegate protocol for loose coupling with UI components.
+@MainActor final class AppDelegate: NSObject, NSApplicationDelegate, BreakDelegate, TimeProvider {
     
     // MARK: - Properties
     
@@ -40,7 +41,7 @@ import Foundation
         NSApp.setActivationPolicy(.accessory)
         
         seedStatusItemPosition()
-        statusItemController = StatusItemController(delegate: self)
+        statusItemController = StatusItemController(delegate: self, timeSource: self)
         startBreakTimer()
         
         print("✅ iBreak: Status bar item created and timer started")
@@ -136,6 +137,8 @@ import Foundation
         timeToNextBreak = defaultBreakInterval // Full interval reset before restarting timer
         dismissCurrentBreakWindow(action: nil)
     }
+    
+    // MARK: - BreakDelegate Protocol Methods
     
     /// Called by BreakWindowController when user clicks Skip/Snooze, or internally for auto-dismiss.
     func breakWindowDismissed(action: BreakAction? = nil) {
