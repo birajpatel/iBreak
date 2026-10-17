@@ -44,6 +44,14 @@ import Foundation
         statusItemController = StatusItemController(delegate: self, timeSource: self)
         startBreakTimer()
         
+        // Handle display sleep/wake to preserve countdown state
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(displayDidWake),
+            name: .screenParametersChanged,
+            object: nil
+        )
+        
         print("✅ iBreak: Status bar item created and timer started")
     }
     
@@ -185,6 +193,36 @@ import Foundation
         statusItemController?.updateTitle()
     }
     
+    /// Resume countdown from a specific time (used after display wake)
+    private func resumeCountdown(from remainingSeconds: TimeInterval) {
+        var timeLeft = Int(remainingSeconds)
+        
+        breakTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            guard let self = self else { return }
+            if timeLeft > 0 {
+                timeLeft -= 1
+                self.timeToNextBreak = TimeInterval(timeLeft)
+            } else {
+                timer.invalidate()
+                self.breakTimer = nil
+                self.triggerBreak()
+            }
+        }
+    }
+
+    /// Handle display wake - restore countdown state that may have been lost during sleep
+    @objc private func displayDidWake() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self else { return }
+            
+            // If we were counting down but timer got suspended, resume from saved time
+            if !self.isBreakActive && self.breakTimer == nil && self.timeToNextBreak > 0 {
+                print("🔄 Resuming break countdown after display wake")
+                self.resumeCountdown(from: self.timeToNextBreak)
+            }
+        }
+    }
+
     /// Stop all active timers.
     func stopTimers() { breakTimer?.invalidate(); breakTimer = nil }
 }
