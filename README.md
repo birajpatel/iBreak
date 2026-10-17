@@ -5,6 +5,12 @@
 
 A lightweight menu bar app that reminds you to take regular breaks for your eye health, following the **20-20-20 rule**: every 20 minutes, look at something 20 feet away for 20 seconds.
 
+## Screenshot 📸
+![iBreak Menu Bar Interface](screenshot.png)
+*Live countdown timer showing 19:45 remaining until next break reminder, displayed in the macOS menu bar.*
+
+---
+
 ## Features ✨
 
 - 🍎 **Menu Bar Integration** - Status item showing live countdown timer (MM:SS format)
