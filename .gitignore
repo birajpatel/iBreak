@@ -13,6 +13,14 @@
 # Tests output (if any)
 Tests/iBreakTests/test_*.log
 
+# App bundles (built by package_and_install.sh - too large/platform-specific to commit)   
+iBreak.app/
+Applications/iBreak.app/  # Our default install location
+
+# Installed copies outside repo
+/Applications/iBreak*
+/Users/biraj/Applications/iBreak*
+
 # Xcode project files (not needed for SPM projects)
 *.xcodeproj/
 *.xcworkspace/

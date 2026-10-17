@@ -20,14 +20,24 @@ A lightweight menu bar app that reminds you to take regular breaks for your eye 
 - macOS 13.0+ (Ventura or later)
 - Xcode Command Line Tools: `xcode-select --install`
 
-### Quick Start
+### Quick Start (Unified Build System)
 ```bash
 # Clone the repository
 git clone https://github.com/birajpatel/iBreak.git
 cd iBreak
 
-# Build and run  
-./build_and_run.sh
+# Development mode (debug build, runs directly from .build/debug/)
+./build.sh --dev        # or just: ./build.sh
+
+# Production installation (.app bundle with optimized release binary)
+./build.sh --install    # Installs to ~/Applications/iBreak.app and launches it
+```
+
+#### Build Modes Explained:
+| Mode | Command | Purpose |
+|------|---------|---------|
+| **Development** 🔧 | `./build.sh` or `--dev` | Fast debug builds for rapid iteration during coding. Runs directly from `.build/debug/` without creating an app bundle |
+| **Production** 📦 | `./build.sh --install` | Creates optimized release binary in proper macOS `.app bundle`, installs to `~/Applications/`, and launches it |
 ```
 
 Or manually build with Swift Package Manager:
@@ -52,21 +62,22 @@ Clicking "Snooze" delays the next break by 5 minutes. Clicking "Skip" resets to 
 
 ```
 Sources/iBreak/
-├── main.swift                  # App entry point + AppDelegate (MVVM pattern)  
+├── main.swift                  # App entry point + AppDelegate (MVVM pattern)   
 ├── Models/
 │   ├── BreakAction.swift       # User action enum (.skip, .snooze)
-│   └── Notifications.swift     # Custom Notification.Name extensions  
+│   └── Notifications.swift     # Custom Notification.Name extensions   
 ├── Protocols/                  # Loose coupling interfaces
 │   ├── BreakDelegate.swift     
 │   ├── TimeProvider.swift
 │   └── SoundPlayer.swift
 ├── Views/
 │   ├── StatusItemController.swift  # Menu bar management (modern button API)
-│   ├── BreakWindowController.swift  # NSPanel lifecycle + positioning  
+│   ├── BreakWindowController.swift  # NSPanel lifecycle + positioning   
 │   └── BreakDialogView.swift        # Custom NSView dialog UI
 └── ViewModels/
     └── BreakViewModel.swift          # ObservableObject for countdown state
 
+build.sh                        # Unified build system (see below)  
 Tests/iBreakTests/                  # Integration tests (shell-based)
 ├── run_all_tests.sh                # Master test runner  
 ├── test_build_and_run.sh           # Verifies clean build + launch  
@@ -88,6 +99,26 @@ bash Tests/iBreakTests/run_all_tests.sh
 # Or individually:
 bash Tests/iBreakTests/test_build_and_run.sh   # Build verification
 bash Tests/iBreakTests/test_break_timer.sh      # Timer logic checks
+```
+
+## Managing Installations 🔧
+
+If you need to **completely uninstall** iBreak (removing all traces):
+```bash
+# Stop any running instances   
+pkill -9 -x "iBreak"
+
+# Remove installed app bundle  
+rm -rf ~/Applications/iBreak.app
+
+# Optional: Remove LaunchAgent if present
+launchctl unload ~/Library/LaunchAgents/com.ibreak.plist 2>/dev/null || true
+rm -f ~/Library/LaunchAgents/com.ibreak.plist
+```
+
+To **reinstall** fresh:
+```bash
+./build.sh --install    # Rebuilds and reinstalls cleanly
 ```
 
 ## Configuration ⚙️
