@@ -18,6 +18,7 @@ A lightweight menu bar app that reminds you to take regular breaks for your eye 
 - 🎯 **On-Top Alerts** - Break windows display above all other apps on primary screen
 - 🔊 **Sound Cues** - Attention-grabbing sound when break starts, gentle chime when dismissed
 - ⌚ **Display Sleep Handling** - Preserves timer state across monitor sleep/wake cycles
+- 🚀 **Launch at Login** - One-click toggle using modern macOS 13+ ServiceManagement (`SMAppService`)
 - 🌓 **Light Theme** - Clean macOS-native interface with proper contrast ratios
 
 ## Installation 📦
@@ -59,6 +60,7 @@ Once running, you'll see a 👁️ eye icon in your menu bar showing time remain
 ### Menu Options  
 - **Take a Break Now** → Trigger an immediate break dialog
 - **Skip This Break** → Reset timer (works anytime, even outside breaks)
+- **Launch at Login** → Toggle auto-start on macOS login
 - **Quit iBreak** → Exit completely (`⌘Q`)
 
 ### During Breaks  
@@ -76,6 +78,9 @@ Sources/iBreak/
 │   ├── BreakDelegate.swift     
 │   ├── TimeProvider.swift
 │   └── SoundPlayer.swift
+├── Services/
+│   ├── BreakSoundManager.swift # Sound playback service
+│   └── LaunchAtLoginManager.swift # Modern SMAppService login item manager
 ├── Views/
 │   ├── StatusItemController.swift  # Menu bar management (modern button API)
 │   ├── BreakWindowController.swift  # NSPanel lifecycle + positioning   

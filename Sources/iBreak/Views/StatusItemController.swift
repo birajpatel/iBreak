@@ -81,6 +81,16 @@ import Cocoa
         menu.addItem(skipItem)
         menu.addItem(.separator())
         
+        let launchAtLoginItem = NSMenuItem(
+            title: "Launch at Login",
+            action: #selector(toggleLaunchAtLogin(_:)),
+            keyEquivalent: ""
+        )
+        launchAtLoginItem.target = self
+        launchAtLoginItem.state = LaunchAtLoginManager.shared.isEnabled ? .on : .off
+        menu.addItem(launchAtLoginItem)
+        menu.addItem(.separator())
+        
         let quitItem = NSMenuItem(
             title: "Quit iBreak",
             action: #selector(quitApp),
@@ -125,6 +135,10 @@ import Cocoa
     @objc private func skipBreak() {
         guard let delegate = delegate else { return }
         delegate.skipBreak()
+    }
+    @objc private func toggleLaunchAtLogin(_ sender: NSMenuItem) {
+        let newState = LaunchAtLoginManager.shared.toggle()
+        sender.state = newState ? .on : .off
     }
     @objc private func quitApp() { NSApp.terminate(nil) }
 }
