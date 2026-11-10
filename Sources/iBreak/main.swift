@@ -12,13 +12,14 @@ import Foundation
     
     private var statusItemController: StatusItemController?
     private var breakTimer: Timer?
+    private var autoDismissWorkItem: DispatchWorkItem?
     
     // Configuration — 20 minutes between breaks (standard eye care recommendation)
     private let defaultBreakInterval: TimeInterval = 20 * 60     // Production value
     private let breakDuration: TimeInterval = 20                // Auto-dismiss after 20 seconds
     
     // State tracking with observable properties
-    private(set) var timeToNextBreak: TimeInterval = 60 * 20 { // Initialize to full interval (seconds)
+    private(set) var timeToNextBreak: TimeInterval = 20 * 60 { // Initialize to full interval (seconds)
         didSet {
             NotificationCenter.default.post(name: .timeToNextBreakChanged, object: nil)
             updateStatusItemTitle()
@@ -41,14 +42,21 @@ import Foundation
         NSApp.setActivationPolicy(.accessory)
         
         seedStatusItemPosition()
+        // Status item configured with modern button API
         statusItemController = StatusItemController(delegate: self, timeSource: self)
         startBreakTimer()
         
         // Handle display sleep/wake to preserve countdown state
-        NotificationCenter.default.addObserver(
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(displayDidSleep),
+            name: NSWorkspace.screensDidSleepNotification,
+            object: nil
+        )
+        NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(displayDidWake),
-            name: .screenParametersChanged,
+            name: NSWorkspace.screensDidWakeNotification,
             object: nil
         )
         
@@ -70,10 +78,10 @@ import Foundation
     // MARK: - Timer Management
     
     /// Start or restart the break timer with proper interval.
-    func startBreakTimer() {
+    func startBreakTimer(interval: TimeInterval? = nil) {
         stopTimers()
         isBreakActive = false
-        timeToNextBreak = defaultBreakInterval  // Reset to full interval (20 min)
+        timeToNextBreak = interval ?? defaultBreakInterval
         
         breakTimer = Timer.scheduledTimer(
             timeInterval: 1.0,
@@ -106,10 +114,12 @@ import Foundation
         breakWindowController?.showWindow(self)
 
         // Auto-dismiss after configured duration
-        DispatchQueue.main.asyncAfter(deadline: .now() + breakDuration) { [weak self] in
+        let workItem = DispatchWorkItem { [weak self] in
             guard let self = self, self.isBreakActive else { return }
             self.dismissBreak()
         }
+        autoDismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + breakDuration, execute: workItem)
     }
     
     /// Take an immediate break (from status bar menu or status item click).
@@ -155,24 +165,20 @@ import Foundation
     }
     
     private func dismissCurrentBreakWindow(action: BreakAction?) {
+        autoDismissWorkItem?.cancel()
+        autoDismissWorkItem = nil
         isBreakActive = false
         statusItemController?.updateTitle()  // Restore time display in status bar
         breakWindowController?.closeWindow() // Closes window + stops countdown + plays exit sound
 
         switch action {
         case .snooze:
-            timeToNextBreak = 5 * 60 // Set snooze duration before starting timer
-            stopTimers()
-            isBreakActive = false
-            breakTimer = Timer.scheduledTimer(
-                timeInterval: 1.0,
-                target: self,
-                selector: #selector(updateCountdown),
-                userInfo: nil,
-                repeats: true
-            )
-        default: // .skip, nil (auto-dismiss)
-            startBreakTimer() // Resume from full interval (20 min) — NOT immediate!
+            startBreakTimer(interval: 5 * 60) // 5 minutes snooze
+        case .skip:
+            timeToNextBreak = 30 // 30 seconds delay to prevent rapid-fire prompts
+            startBreakTimer(interval: 30)
+        case nil: // Auto-dismiss after completed break
+            startBreakTimer(interval: defaultBreakInterval) // Resume from full interval (20 min)
         }
     }
     
@@ -193,41 +199,42 @@ import Foundation
         statusItemController?.updateTitle()
     }
     
-    /// Resume countdown from a specific time (used after display wake)
-    private func resumeCountdown(from remainingSeconds: TimeInterval) {
-        var timeLeft = Int(remainingSeconds)
-        
-        breakTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
-            guard let self = self else { return }
-            if timeLeft > 0 {
-                timeLeft -= 1
-                self.timeToNextBreak = TimeInterval(timeLeft)
-            } else {
-                timer.invalidate()
-                self.breakTimer = nil
-                self.triggerBreak()
-            }
-        }
+    /// Handle display sleep - pause countdown while display is turned off.
+    @objc private func displayDidSleep() {
+        stopTimers()
     }
 
-    /// Handle display wake - restore countdown state that may have been lost during sleep
+    /// Handle display wake - restart fresh break countdown after display turns back on.
     @objc private func displayDidWake() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self else { return }
-            
-            // If we were counting down but timer got suspended, resume from saved time
-            if !self.isBreakActive && self.breakTimer == nil && self.timeToNextBreak > 0 {
-                print("🔄 Resuming break countdown after display wake")
-                self.resumeCountdown(from: self.timeToNextBreak)
+            if self.isBreakActive {
+                self.dismissBreak()
+            } else {
+                self.startBreakTimer()
             }
         }
     }
 
     /// Stop all active timers.
-    func stopTimers() { breakTimer?.invalidate(); breakTimer = nil }
+    func stopTimers() {
+        breakTimer?.invalidate()
+        breakTimer = nil
+        autoDismissWorkItem?.cancel()
+        autoDismissWorkItem = nil
+    }
 }
 
 // MARK: - App Entry Point
-let app = NSApplication.shared; let delegate = AppDelegate(); app.delegate = delegate
-print("🚀 iBreak starting up...")
-app.activate(ignoringOtherApps: false); app.run()
+@main
+struct iBreakApp {
+    @MainActor
+    static func main() {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        print("🚀 iBreak starting up...")
+        app.activate(ignoringOtherApps: false)
+        app.run()
+    }
+}

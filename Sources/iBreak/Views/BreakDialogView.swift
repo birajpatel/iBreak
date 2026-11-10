@@ -2,25 +2,28 @@
 //  iBreak - Eye Care Reminder App for macOS
 
 import Cocoa
+import Combine
 
 /// Custom NSView rendering the break reminder dialog using pure AppKit.
+@MainActor
 final class BreakDialogView: NSView {
     
     // MARK: - Properties
     
     private let viewModel: BreakViewModel
     private let onAction: (BreakAction) -> Void
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - UI Elements (Lazy Initialized)
     
     private lazy var iconImageView: NSImageView = {
         let iv = NSImageView()
         if #available(macOS 13.0, *) {
-            iv.image = NSImage(systemSymbolName: "eye.fill", accessibilityDescription: nil)
-        } else {
-            // Fallback for older systems - could use a bundled image
+            let config = NSImage.SymbolConfiguration(pointSize: 44, weight: .regular)
+            iv.image = NSImage(systemSymbolName: "eye.fill", accessibilityDescription: "Eye icon")?.withSymbolConfiguration(config)
         }
-        iv.imageScaling = .scaleAxesIndependently
+        iv.imageScaling = .scaleProportionallyUpOrDown
+        iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
     
@@ -44,11 +47,12 @@ final class BreakDialogView: NSView {
     // MARK: - Setup
     
     private func setupView() {
+        wantsLayer = true
         layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
         
         configureTextLabels()
         layoutUI()
-        startCountdownUpdateTimer()
+        bindViewModel()
     }
     
     /// Configure attributed text for all labels.
@@ -58,15 +62,30 @@ final class BreakDialogView: NSView {
             attributes: [.foregroundColor: NSColor.labelColor, .font: NSFont.systemFont(ofSize: 28, weight: .bold)]
         )
         
-        countdownLabel.attributedStringValue = NSAttributedString(
-            string: "Auto-dismissing in \(viewModel.secondsRemaining)s",
-            attributes: [.foregroundColor: NSColor.systemBlue, .font: NSFont.monospacedSystemFont(ofSize: 18, weight: .medium)]
-        )
+        updateCountdownLabel(seconds: viewModel.countdown)
         
         instructionLabel.attributedStringValue = NSAttributedString(
             string: viewModel.instructionText,
             attributes: [.foregroundColor: NSColor.secondaryLabelColor, .font: NSFont.systemFont(ofSize: 15)]
         )
+    }
+    
+    /// Update countdown display text.
+    private func updateCountdownLabel(seconds: Int) {
+        countdownLabel.attributedStringValue = NSAttributedString(
+            string: "Auto-dismissing in \(seconds)s",
+            attributes: [.foregroundColor: NSColor.systemBlue, .font: NSFont.monospacedSystemFont(ofSize: 18, weight: .medium)]
+        )
+    }
+    
+    /// Bind to ViewModel properties reactively.
+    private func bindViewModel() {
+        viewModel.$countdown
+            .receive(on: RunLoop.main)
+            .sink { [weak self] seconds in
+                self?.updateCountdownLabel(seconds: seconds)
+            }
+            .store(in: &cancellables)
     }
     
     /// Layout all subviews using stack views and constraints.
@@ -92,6 +111,9 @@ final class BreakDialogView: NSView {
         addSubview(buttonStack)
         
         NSLayoutConstraint.activate([
+            iconImageView.widthAnchor.constraint(equalToConstant: 48),
+            iconImageView.heightAnchor.constraint(equalToConstant: 48),
+            
             vStack.centerXAnchor.constraint(equalTo: centerXAnchor),
             vStack.topAnchor.constraint(equalTo: topAnchor, constant: 40),
             vStack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 20),
@@ -101,17 +123,6 @@ final class BreakDialogView: NSView {
             buttonStack.topAnchor.constraint(equalTo: vStack.bottomAnchor, constant: 30),
             buttonStack.widthAnchor.constraint(equalToConstant: 280)
         ])
-    }
-    
-    /// Update countdown label every second to reflect current time remaining.
-    private func startCountdownUpdateTimer() {
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.countdownLabel.attributedStringValue = NSAttributedString(
-                string: "Auto-dismissing in \(self.viewModel.secondsRemaining)s",
-                attributes: [.foregroundColor: NSColor.systemBlue, .font: NSFont.monospacedSystemFont(ofSize: 18, weight: .medium)]
-            )
-        }
     }
     
     // MARK: - Actions

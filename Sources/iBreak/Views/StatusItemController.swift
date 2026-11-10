@@ -46,16 +46,16 @@ import Cocoa
         if let image = NSImage(systemSymbolName: "eye.fill", accessibilityDescription: "iBreak") {
             image.isTemplate = true
             button.image = image
+            button.imagePosition = .imageLeading
         }
         
         // Modern API: set target/action on BUTTON (not deprecated NSStatusItem.target)
         button.target = self
         button.action = #selector(statusBarButtonClicked)
-        // Explicitly request left-click events — critical for macOS 27 compatibility
-        button.sendAction(on: [.leftMouseUp])
+        // Request both left-click and right-click events
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         
-        statusItem.menu = buildMenu()
-        statusItem.isVisible = true  // Force visibility override (fixes macOS 26/27 bug)
+        statusItem.isVisible = true  // Force visibility override
         updateTitle()  // Show initial time in status bar
     }
     
@@ -104,8 +104,12 @@ import Cocoa
     // MARK: - Actions
     
     @objc private func statusBarButtonClicked() {
-        // Handle right-click/control-click via menu automatically
-        if NSApp.currentEvent?.type == .rightMouseUp || NSEvent.modifierFlags.contains(.control) {
+        guard let event = NSApp.currentEvent, let button = statusItem.button else { return }
+        
+        // Right-click or Control-click: show menu
+        if event.type == .rightMouseUp || event.modifierFlags.contains(.control) {
+            let menu = buildMenu()
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 5), in: button)
             return
         }
         

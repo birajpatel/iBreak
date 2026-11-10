@@ -4,13 +4,15 @@
 import Cocoa
 
 /// Window controller managing the on-top break reminder panel.
-final class BreakWindowController: NSWindowController {
+@MainActor
+final class BreakWindowController: NSWindowController, NSWindowDelegate {
     
     // MARK: - Properties (Injected Dependencies)
     
     private weak var delegate: BreakDelegate?
     private let soundPlayer: SoundPlayer
     let viewModel = BreakViewModel()  // Public for testing access
+    private var isClosingProgrammatically = false
     
     // MARK: - Initialization
     
@@ -43,6 +45,7 @@ final class BreakWindowController: NSWindowController {
         panel.backgroundColor = NSColor.white
         panel.titleVisibility = .visible  // Keep title bar for window controls
         panel.isFloatingPanel = true      // Allow floating above other windows
+        panel.delegate = self
         
         centerOnScreen(panel)
         attachDialogView(to: panel)
@@ -96,10 +99,22 @@ final class BreakWindowController: NSWindowController {
     }
     
     func closeWindow() {
+        isClosingProgrammatically = true
         viewModel.stopCountdown()
         viewModel.isShowing = false
         soundPlayer.playBreakEnd()  // Exit sound cue via protocol
         window?.close()
+        isClosingProgrammatically = false
+    }
+    
+    // MARK: - NSWindowDelegate
+    
+    func windowWillClose(_ notification: Notification) {
+        guard !isClosingProgrammatically else { return }
+        viewModel.stopCountdown()
+        viewModel.isShowing = false
+        soundPlayer.playBreakEnd()
+        delegate?.breakWindowDismissed(action: .skip)
     }
     
     // MARK: - Private Helpers

@@ -1,4 +1,4 @@
-// swift-tools-version: 6.4
+// swift-tools-version: 5.9
 // The Swift Tools Version of the package.
 
 import PackageDescription

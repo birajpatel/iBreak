@@ -11,7 +11,7 @@ cd "$SCRIPT_DIR"
 APP_NAME="iBreak.app"
 RELEASE_BUILD=".build/release/iBreak"
 DEBUG_BUILD=".build/debug/iBreak"
-INSTALL_PATH="/Users/biraj/Applications/${APP_NAME}"
+INSTALL_PATH="${HOME}/Applications/${APP_NAME}"
 
 # --- Usage Information ---
 show_usage() {

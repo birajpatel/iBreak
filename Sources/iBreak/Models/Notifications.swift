@@ -1,6 +1,7 @@
 //  Notifications.swift
 //  iBreak - Eye Care Reminder App for macOS
 
+import AppKit
 import Foundation
 
 /// Extensions to Notification.Name providing custom notifications used throughout the app.
@@ -14,12 +15,11 @@ extension Notification.Name {
     /// Posted when isBreakActive state toggles.
     static let breakStateChanged = Notification.Name("BreakStateChanged")
     
-    /// System-level notification fired by macOS when display parameters change (e.g., sleep/wake).
-    /// We observe this to restore countdown timers that may have been suspended during display sleep.
-    static let didChangeScreenParameters = NSNotification.Name("NSWindowDidResizeNotifications") // Fallback: using window resize event as proxy
+    /// System-level notification fired by macOS when display parameters change.
+    static let didChangeScreenParameters = NSApplication.didChangeScreenParametersNotification
     
-    /// Alternative notification for detecting screen changes (more compatible across macOS versions).
-    static let screenParametersChanged = Notification.Name(rawValue: "com.apple.AppKit.screen.parameters.changed")
+    /// Retained for backward compatibility.
+    static let screenParametersChanged = NSApplication.didChangeScreenParametersNotification
 }
 
 /// Keys used in notification userInfo dictionaries for inter-component communication.

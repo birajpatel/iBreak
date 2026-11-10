@@ -5,6 +5,7 @@ import Foundation
 
 /// ViewModel responsible for managing the break dialog's countdown state.
 /// Handles all timer logic independently from UI components.
+@MainActor
 final class BreakViewModel: ObservableObject {
     
     // MARK: - Public Properties (Observable)
@@ -38,13 +39,20 @@ final class BreakViewModel: ObservableObject {
         stopCountdown()
         countdown = 20
         
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            if self.countdown > 0 {
-                self.countdown -= 1
-            } else {
-                self.stopCountdown()
-            }
+        countdownTimer = Timer.scheduledTimer(
+            timeInterval: 1.0,
+            target: self,
+            selector: #selector(timerTick),
+            userInfo: nil,
+            repeats: true
+        )
+    }
+    
+    @objc private func timerTick() {
+        if countdown > 0 {
+            countdown -= 1
+        } else {
+            stopCountdown()
         }
     }
     
